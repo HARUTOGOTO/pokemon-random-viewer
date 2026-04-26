@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ランダムポケモン図鑑</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Trebuchet MS', 'Hiragino Maru Gothic ProN', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 20% 30%, #ffe9a8 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, #b9e4ff 0%, transparent 40%),
+      linear-gradient(135deg, #ffd6d6 0%, #d6e6ff 100%);
+    padding: 20px;
+    user-select: none;
+  }
+
+  /* ポケモン図鑑本体 */
+  .pokedex {
+    width: min(420px, 100%);
+    background: linear-gradient(180deg, #e23b3b 0%, #c81f1f 100%);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow:
+      0 12px 40px rgba(0,0,0,0.3),
+      inset 0 -8px 0 rgba(0,0,0,0.15),
+      inset 0 4px 0 rgba(255,255,255,0.2);
+    position: relative;
+  }
+
+  /* 上部のライト群 */
+  .top-lights {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .big-light {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #a3e0ff, #3a9fe0 60%, #1f6aaf);
+    border: 4px solid #fff;
+    box-shadow: 0 0 12px rgba(60,160,230,0.6), inset 0 0 6px rgba(255,255,255,0.6);
+    position: relative;
+    overflow: hidden;
+  }
+  .big-light::after {
+    content: "";
+    position: absolute;
+    top: 8px; left: 12px;
+    width: 14px; height: 10px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 50%;
+    transform: rotate(-30deg);
+  }
+  .small-lights { display: flex; gap: 6px; }
+  .small-light {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1.5px solid rgba(0,0,0,0.3);
+  }
+  .small-light.red    { background: #ff5454; }
+  .small-light.yellow { background: #ffd84a; }
+  .small-light.green  { background: #4fd170; }
+
+  /* 画面（スクリーン） */
+  .screen-frame {
+    background: #f5f5f5;
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.25);
+  }
+  .screen {
+    background: linear-gradient(180deg, #f0fbe9 0%, #d6f0c4 100%);
+    border-radius: 10px;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    border: 2px solid #2c2c2c;
+  }
+  .screen:hover { transform: translateY(-2px); }
+  .screen:active { transform: translateY(1px); }
+
+  /* スクリーン上の角の小さなライト */
+  .screen-corner {
+    position: absolute;
+    top: 8px; left: 8px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #e23b3b;
+    box-shadow: 0 0 6px rgba(226,59,59,0.7);
+    animation: blink 1.5s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .pokemon-img {
+    width: 75%;
+    height: 75%;
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
+    transition: opacity 0.3s ease;
+  }
+
+  .placeholder {
+    text-align: center;
+    color: #4a6b3a;
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  .placeholder .pokeball {
+    width: 60px; height: 60px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background:
+      linear-gradient(180deg, #e23b3b 0%, #e23b3b 48%, #222 48%, #222 52%, #fff 52%, #fff 100%);
+    border: 3px solid #222;
+    position: relative;
+  }
+  .placeholder .pokeball::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px; height: 16px;
+    background: #fff;
+    border: 3px solid #222;
+    border-radius: 50%;
+  }
+
+  /* 情報パネル */
+  .info-panel {
+    margin-top: 16px;
+    background: #2b2b2b;
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: #b9f7a4;
+    font-family: 'Courier New', monospace;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+    min-height: 110px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .info-id {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+  .info-name {
+    font-size: 22px;
+    font-weight: bold;
+    text-transform: capitalize;
+    letter-spacing: 1px;
+  }
+  .types {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .type-chip {
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    text-transform: capitalize;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 12px;
+    opacity: 0.85;
+  }
+
+  /* ボタン群 */
+  .controls {
+    margin-top: 18px;
+    display: flex;
+    gap: 10px;
+  }
+  .btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #fff;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+    font-family: inherit;
+  }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+  .btn-primary { background: linear-gradient(180deg, #4fd170, #2ea84e); }
+  .btn-secondary { background: linear-gradient(180deg, #4a90e2, #2e6bb8); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* タイプカラー */
+  .t-normal   { background: #a8a878; }
+  .t-fire     { background: #f08030; }
+  .t-water    { background: #6890f0; }
+  .t-electric { background: #f8d030; color: #333 !important; text-shadow: none !important; }
+  .t-grass    { background: #78c850; }
+  .t-ice      { background: #98d8d8; color: #333 !important; text-shadow: none !important; }
+  .t-fighting { background: #c03028; }
+  .t-poison   { background: #a040a0; }
+  .t-ground   { background: #e0c068; color: #333 !important; text-shadow: none !important; }
+  .t-flying   { background: #a890f0; }
+  .t-psychic  { background: #f85888; }
+  .t-bug      { background: #a8b820; }
+  .t-rock     { background: #b8a038; }
+  .t-ghost    { background: #705898; }
+  .t-dragon   { background: #7038f8; }
+  .t-dark     { background: #705848; }
+  .t-steel    { background: #b8b8d0; color: #333 !important; text-shadow: none !important; }
+  .t-fairy    { background: #ee99ac; }
+
+  /* ローディング */
+  .loading {
+    width: 50px; height: 50px;
+    border: 5px solid rgba(0,0,0,0.1);
+    border-top-color: #e23b3b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hint {
+    text-align: center;
+    color: rgba(255,255,255,0.85);
+    font-size: 12px;
+    margin-top: 12px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+  <div class="pokedex">
+    <div class="top-lights">
+      <div class="big-light"></div>
+      <div class="small-lights">
+        <div class="small-light red"></div>
+        <div class="small-light yellow"></div>
+        <div class="small-light green"></div>
+      </div>
+    </div>
+
+    <div class="screen-frame">
+      <div class="screen" id="screen">
+        <div class="screen-corner"></div>
+        <div id="screen-content">
+          <div class="placeholder">
+            <div class="pokeball"></div>
+            タップしてポケモンを<br>呼び出そう！
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-panel" id="info-panel">
+      <div class="info-row">
+        <span class="info-id">No. ---</span>
+      </div>
+      <div class="info-name">???</div>
+      <div class="types"></div>
+      <div class="stats"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="btn-random">▶ ランダム</button>
+      <button class="btn btn-secondary" id="btn-cry">🔊 鳴き声</button>
+    </div>
+
+    <div class="hint">画面をタップしてもランダム呼び出し</div>
+  </div>
+
+<script>
+  const MAX_POKEMON_ID = 1025;
+  const screen = document.getElementById('screen');
+  const screenContent = document.getElementById('screen-content');
+  const infoPanel = document.getElementById('info-panel');
+  const btnRandom = document.getElementById('btn-random');
+  const btnCry = document.getElementById('btn-cry');
+
+  let currentCryUrl = null;
+  let currentAudio = null;
+  let isLoading = false;
+
+  function setLoading(loading) {
+    isLoading = loading;
+    btnRandom.disabled = loading;
+    if (loading) {
+      screenContent.innerHTML = '<div class="loading"></div>';
+    }
+  }
+
+  function renderPokemon(p) {
+    const artwork =
+      p.sprites?.other?.['official-artwork']?.front_default ||
+      p.sprites?.front_default;
+
+    screenContent.innerHTML = `<img class="pokemon-img" src="${artwork}" alt="${p.name}">`;
+
+    const id = String(p.id).padStart(4, '0');
+    const typeChips = p.types.map(t =>
+      `<span class="type-chip t-${t.type.name}">${t.type.name}</span>`
+    ).join('');
+
+    const heightM = (p.height / 10).toFixed(1);
+    const weightKg = (p.weight / 10).toFixed(1);
+
+    infoPanel.innerHTML = `
+      <div class="info-row">
+        <span class="info-id">No. ${id}</span>
+      </div>
+      <div class="info-name">${p.name}</div>
+      <div class="types">${typeChips}</div>
+      <div class="stats">
+        <span>身長: ${heightM}m</span>
+        <span>体重: ${weightKg}kg</span>
+      </div>
+    `;
+  }
+
+  function playCry(url) {
+    if (!url) return;
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+    currentAudio = new Audio(url);
+    currentAudio.volume = 0.5;
+    currentAudio.play().catch(err => {
+      console.warn('鳴き声を再生できませんでした:', err);
+    });
+  }
+
+  async function fetchRandomPokemon() {
+    if (isLoading) return;
+    setLoading(true);
+
+    const id = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
+    try {
+      const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+      if (!res.ok) throw new Error('fetch failed');
+      const data = await res.json();
+
+      currentCryUrl = data.cries?.latest || data.cries?.legacy || null;
+
+      renderPokemon(data);
+      playCry(currentCryUrl);
+    } catch (err) {
+      console.error(err);
+      screenContent.innerHTML = `
+        <div class="placeholder">
+          <div class="pokeball"></div>
+          通信エラー…<br>もう一度タップしてください
+        </div>
+      `;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  screen.addEventListener('click', fetchRandomPokemon);
+  btnRandom.addEventListener('click', fetchRandomPokemon);
+  btnCry.addEventListener('click', () => playCry(currentCryUrl));
+</script>
+</body>
+</html>
